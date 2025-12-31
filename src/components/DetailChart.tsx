@@ -151,12 +151,14 @@ export function DetailChart({ category, details, onClose }: DetailChartProps) {
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                 }}
                 labelStyle={{ color: '#334155', fontWeight: 600 }}
-                formatter={(value: number, name: string) => {
-                  const metric = METRICS.find((m) => m.key === name);
-                  if (name === '평균TAG') {
-                    return [`₩${value.toLocaleString()}`, metric?.label || name];
+                formatter={(value, name) => {
+                  const numValue = typeof value === 'number' ? value : 0;
+                  const strName = String(name);
+                  const metric = METRICS.find((m) => m.key === strName);
+                  if (strName === '평균TAG') {
+                    return [`₩${numValue.toLocaleString()}`, metric?.label || strName];
                   }
-                  return [`$${value.toFixed(2)}`, metric?.label || name];
+                  return [`$${numValue.toFixed(2)}`, metric?.label || strName];
                 }}
               />
               <Legend />
