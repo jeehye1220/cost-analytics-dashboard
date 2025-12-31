@@ -12,12 +12,12 @@ import {
   SIMULATOR_TABS,
   TARGET_MARKUP,
   CostRecord,
+  GuidelineResult,
 } from '@/lib/types';
 import {
   calculateSimulatorState,
   createSimulatorCategoriesFromRecords,
   generateGuideline,
-  GuidelineResult,
 } from '@/lib/simulator';
 import { loadCostData } from '@/lib/data';
 import { SimulatorTable } from './SimulatorTable';
