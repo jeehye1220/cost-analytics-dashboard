@@ -13,6 +13,9 @@ import {
   TARGET_MARKUP,
 } from './types';
 
+// Re-export types for convenience
+export type { GuidelineResult };
+
 // ============================================
 // 기본 계산 함수
 // ============================================
