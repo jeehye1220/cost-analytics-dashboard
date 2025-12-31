@@ -206,10 +206,142 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
           <div className="space-y-6 mb-4">
             {/* 첫 번째 행: ① ② 나란히 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* ① 원가원인 & 발주량 - Stacked Area + Line */}
+              {/* ① 가격 vs 원가 - KRW 막대 + 원가율 꺾은선 */}
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-slate-600">① 원가원인 & 발주량</h4>
+                  <h4 className="text-sm font-medium text-slate-600">① 가격 vs 원가</h4>
+                  <span className="text-xs text-slate-500">적정원가율 {TARGET_COST_RATE}% (MU 4.5)</span>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart data={priceVsCostData} margin={{ top: 10, right: 55, left: 15, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fill: '#64748b', fontSize: 10 }} 
+                      axisLine={{ stroke: '#cbd5e1' }}
+                      interval={0}
+                      angle={-15}
+                      textAnchor="end"
+                      height={50}
+                    />
+                    
+                    {/* 왼쪽 Y축: 원가/TAG (KRW) */}
+                    <YAxis 
+                      yAxisId="krw"
+                      stroke="#3b82f6"
+                      tick={{ fill: '#3b82f6', fontSize: 10 }} 
+                      axisLine={{ stroke: '#cbd5e1' }}
+                      tickFormatter={(value) => `₩${(value/1000).toFixed(0)}K`}
+                      label={{ 
+                        value: '원가/TAG (KRW)', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        fill: '#3b82f6',
+                        fontSize: 10,
+                        offset: 5
+                      }}
+                    />
+                    
+                    {/* 오른쪽 Y축: 원가율 */}
+                    <YAxis 
+                      yAxisId="rate"
+                      orientation="right"
+                      stroke={COST_RATE_COLOR}
+                      tick={{ fill: COST_RATE_COLOR, fontSize: 10 }} 
+                      axisLine={{ stroke: COST_RATE_COLOR }}
+                      tickFormatter={(value) => `${value}%`}
+                      domain={[15, 30]}
+                      label={{ 
+                        value: '원가율 (%)', 
+                        angle: 90, 
+                        position: 'insideRight',
+                        fill: COST_RATE_COLOR,
+                        fontSize: 10,
+                        offset: 5
+                      }}
+                    />
+                    
+                    {/* 적정원가율 22.2% 기준선 */}
+                    <ReferenceLine 
+                      yAxisId="rate"
+                      y={TARGET_COST_RATE} 
+                      stroke="#10b981" 
+                      strokeDasharray="8 4"
+                      strokeWidth={2}
+                      label={{ 
+                        value: `적정 ${TARGET_COST_RATE}%(MU 4.5)`, 
+                        position: 'right',
+                        fill: '#10b981',
+                        fontSize: 11,
+                        fontWeight: 600
+                      }}
+                    />
+                    
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#ffffff', 
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      }}
+                      labelStyle={{ color: '#334155', fontWeight: 600 }}
+                      formatter={(value, name) => {
+                        const numValue = typeof value === 'number' ? value : 0;
+                        if (name === '평균TAG') return [`₩${numValue.toLocaleString()}`, '평균TAG'];
+                        if (name === '평균원가KRW') return [`₩${numValue.toLocaleString()}`, '평균원가'];
+                        if (name === '원가율') return [`${numValue.toFixed(1)}%`, '원가율'];
+                        return [numValue, name as string];
+                      }}
+                    />
+                    <Legend 
+                      formatter={(value) => {
+                        const labels: Record<string, string> = {
+                          '평균TAG': '평균TAG (KRW)',
+                          '평균원가KRW': '평균원가 (KRW)',
+                          '원가율': '원가율 (%)',
+                        };
+                        return <span style={{ color: '#475569', fontSize: 11 }}>{labels[value] || value}</span>;
+                      }}
+                    />
+                    
+                    {/* 막대: 평균TAG */}
+                    <Bar
+                      yAxisId="krw"
+                      dataKey="평균TAG"
+                      fill={PRICE_COST_COLORS.평균TAG}
+                      radius={[4, 4, 0, 0]}
+                      opacity={0.7}
+                      barSize={25}
+                    />
+                    
+                    {/* 막대: 평균원가KRW */}
+                    <Bar
+                      yAxisId="krw"
+                      dataKey="평균원가KRW"
+                      fill={PRICE_COST_COLORS.평균원가KRW}
+                      radius={[4, 4, 0, 0]}
+                      opacity={0.7}
+                      barSize={25}
+                    />
+                    
+                    {/* 꺾은선: 원가율 */}
+                    <Line
+                      yAxisId="rate"
+                      type="monotone"
+                      dataKey="원가율"
+                      stroke={COST_RATE_COLOR}
+                      strokeWidth={3}
+                      dot={{ fill: COST_RATE_COLOR, strokeWidth: 2, r: 5 }}
+                      activeDot={{ r: 7 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* ② 원가원인 & 발주량 - Stacked Area + Line */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-slate-600">② 원가원인 & 발주량</h4>
                   <div className="flex items-center gap-2">
                     {COST_TYPES.map((cost) => (
                       <label 
@@ -385,138 +517,6 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                         activeDot={{ r: 6 }}
                       />
                     )}
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* ② 가격 vs 원가 - KRW 막대 + 원가율 꺾은선 */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-slate-600">② 가격 vs 원가</h4>
-                  <span className="text-xs text-slate-500">적정원가율 {TARGET_COST_RATE}% (MU 4.5)</span>
-                </div>
-                <ResponsiveContainer width="100%" height={280}>
-                  <ComposedChart data={priceVsCostData} margin={{ top: 10, right: 55, left: 15, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fill: '#64748b', fontSize: 10 }} 
-                      axisLine={{ stroke: '#cbd5e1' }}
-                      interval={0}
-                      angle={-15}
-                      textAnchor="end"
-                      height={50}
-                    />
-                    
-                    {/* 왼쪽 Y축: 원가/TAG (KRW) */}
-                    <YAxis 
-                      yAxisId="krw"
-                      stroke="#3b82f6"
-                      tick={{ fill: '#3b82f6', fontSize: 10 }} 
-                      axisLine={{ stroke: '#cbd5e1' }}
-                      tickFormatter={(value) => `₩${(value/1000).toFixed(0)}K`}
-                      label={{ 
-                        value: '원가/TAG (KRW)', 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        fill: '#3b82f6',
-                        fontSize: 10,
-                        offset: 5
-                      }}
-                    />
-                    
-                    {/* 오른쪽 Y축: 원가율 */}
-                    <YAxis 
-                      yAxisId="rate"
-                      orientation="right"
-                      stroke={COST_RATE_COLOR}
-                      tick={{ fill: COST_RATE_COLOR, fontSize: 10 }} 
-                      axisLine={{ stroke: COST_RATE_COLOR }}
-                      tickFormatter={(value) => `${value}%`}
-                      domain={[15, 30]}
-                      label={{ 
-                        value: '원가율 (%)', 
-                        angle: 90, 
-                        position: 'insideRight',
-                        fill: COST_RATE_COLOR,
-                        fontSize: 10,
-                        offset: 5
-                      }}
-                    />
-                    
-                    {/* 적정원가율 22.2% 기준선 */}
-                    <ReferenceLine 
-                      yAxisId="rate"
-                      y={TARGET_COST_RATE} 
-                      stroke="#10b981" 
-                      strokeDasharray="8 4"
-                      strokeWidth={2}
-                      label={{ 
-                        value: `적정 ${TARGET_COST_RATE}%(MU 4.5)`, 
-                        position: 'right',
-                        fill: '#10b981',
-                        fontSize: 11,
-                        fontWeight: 600
-                      }}
-                    />
-                    
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#ffffff', 
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                      }}
-                      labelStyle={{ color: '#334155', fontWeight: 600 }}
-                      formatter={(value, name) => {
-                        const numValue = typeof value === 'number' ? value : 0;
-                        if (name === '평균TAG') return [`₩${numValue.toLocaleString()}`, '평균TAG'];
-                        if (name === '평균원가KRW') return [`₩${numValue.toLocaleString()}`, '평균원가'];
-                        if (name === '원가율') return [`${numValue.toFixed(1)}%`, '원가율'];
-                        return [numValue, name as string];
-                      }}
-                    />
-                    <Legend 
-                      formatter={(value) => {
-                        const labels: Record<string, string> = {
-                          '평균TAG': '평균TAG (KRW)',
-                          '평균원가KRW': '평균원가 (KRW)',
-                          '원가율': '원가율 (%)',
-                        };
-                        return <span style={{ color: '#475569', fontSize: 11 }}>{labels[value] || value}</span>;
-                      }}
-                    />
-                    
-                    {/* 막대: 평균TAG */}
-                    <Bar
-                      yAxisId="krw"
-                      dataKey="평균TAG"
-                      fill={PRICE_COST_COLORS.평균TAG}
-                      radius={[4, 4, 0, 0]}
-                      opacity={0.7}
-                      barSize={25}
-                    />
-                    
-                    {/* 막대: 평균원가KRW */}
-                    <Bar
-                      yAxisId="krw"
-                      dataKey="평균원가KRW"
-                      fill={PRICE_COST_COLORS.평균원가KRW}
-                      radius={[4, 4, 0, 0]}
-                      opacity={0.7}
-                      barSize={25}
-                    />
-                    
-                    {/* 꺾은선: 원가율 */}
-                    <Line
-                      yAxisId="rate"
-                      type="monotone"
-                      dataKey="원가율"
-                      stroke={COST_RATE_COLOR}
-                      strokeWidth={3}
-                      dot={{ fill: COST_RATE_COLOR, strokeWidth: 2, r: 5 }}
-                      activeDot={{ r: 7 }}
-                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>

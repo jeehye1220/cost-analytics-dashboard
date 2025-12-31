@@ -214,3 +214,4 @@ export function SimulatorTable({ categories, exchangeRate, onCategoryUpdate }: S
   );
 }
 
+
