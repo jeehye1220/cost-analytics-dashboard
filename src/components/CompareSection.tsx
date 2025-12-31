@@ -19,6 +19,7 @@ import {
   BarChart,
   ReferenceLine,
   LabelList,
+  Area,
 } from 'recharts';
 
 interface CompareSectionProps {
@@ -58,6 +59,8 @@ const COST_COLORS = {
   기타경비: '#ec4899', // pink
 };
 
+const ORDER_QTY_COLOR = '#f97316'; // orange
+
 type CostType = keyof typeof COST_COLORS;
 const COST_TYPES: CostType[] = ['원부자재', '아트웍', '공임', '기타경비'];
 
@@ -76,6 +79,7 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
   
   // 범례 선택 상태 (기본값: 전부 선택)
   const [selectedCosts, setSelectedCosts] = useState<Set<CostType>>(new Set(COST_TYPES));
+  const [showOrderQty, setShowOrderQty] = useState(true);
 
   const toggleCost = (cost: CostType) => {
     setSelectedCosts((prev) => {
@@ -97,14 +101,15 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
     return numA - numB; // 오름차순 (23S → 24S → 25S → 26S)
   });
 
-  // ① 단가 구성 Stacked Bar 데이터 (평균원가USD 포함)
-  const stackedBarData = sortedItems.map((item) => ({
+  // ① 단가 구성 + 발주수량 데이터
+  const breakdownData = sortedItems.map((item) => ({
     name: item.label,
     원부자재: item.원부자재단가,
     아트웍: item.아트웍단가,
     공임: item.공임단가,
     기타경비: item.기타경비단가,
     평균원가USD: item.평균원가USD,
+    발주수량: item.발주수량,
   }));
 
   // ② 가격 vs 원가 데이터 (KRW 막대 + 원가율 꺾은선)
@@ -201,10 +206,10 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
           <div className="space-y-6 mb-4">
             {/* 첫 번째 행: ① ② 나란히 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* ① 단가 구성 비교 (USD) - Stacked Bar */}
+              {/* ① 원가원인 & 발주량 - Stacked Area + Line */}
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-slate-600">① 단가 구성 비교 (USD)</h4>
+                  <h4 className="text-sm font-medium text-slate-600">① 원가원인 & 발주량</h4>
                   <div className="flex items-center gap-2">
                     {COST_TYPES.map((cost) => (
                       <label 
@@ -223,10 +228,22 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                         <span style={{ color: COST_COLORS[cost] }}>{cost}</span>
                       </label>
                     ))}
+                    <label className="flex items-center gap-1 cursor-pointer text-xs ml-2">
+                      <Checkbox
+                        checked={showOrderQty}
+                        onCheckedChange={() => setShowOrderQty(prev => !prev)}
+                        className="w-3 h-3"
+                        style={{
+                          borderColor: ORDER_QTY_COLOR,
+                          backgroundColor: showOrderQty ? ORDER_QTY_COLOR : 'transparent',
+                        }}
+                      />
+                      <span style={{ color: ORDER_QTY_COLOR }}>발주수량</span>
+                    </label>
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={stackedBarData} margin={{ top: 25, right: 20, left: 10, bottom: 10 }}>
+                  <ComposedChart data={breakdownData} margin={{ top: 25, right: 55, left: 15, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis 
                       dataKey="name" 
@@ -237,18 +254,41 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                       textAnchor="end"
                       height={50}
                     />
+                    
+                    {/* 왼쪽 Y축: 단가 (USD) */}
                     <YAxis 
-                      tick={{ fill: '#64748b', fontSize: 10 }} 
-                      axisLine={{ stroke: '#cbd5e1' }}
+                      yAxisId="usd"
+                      stroke="#64748b"
+                      tick={{ fill: '#64748b', fontSize: 10 }}
                       tickFormatter={(value) => `$${value}`}
                       label={{ 
-                        value: 'USD', 
+                        value: '단가 (USD)', 
                         angle: -90, 
                         position: 'insideLeft',
                         fill: '#64748b',
-                        fontSize: 10
+                        fontSize: 10,
+                        offset: 5
                       }}
                     />
+                    
+                    {/* 오른쪽 Y축: 발주수량 */}
+                    <YAxis 
+                      yAxisId="qty"
+                      orientation="right"
+                      stroke={ORDER_QTY_COLOR}
+                      tick={{ fill: ORDER_QTY_COLOR, fontSize: 10 }}
+                      tickFormatter={(value) => `${(value/1000).toFixed(0)}K`}
+                      domain={['dataMin - 5000', 'dataMax + 5000']}
+                      label={{ 
+                        value: '발주수량', 
+                        angle: 90, 
+                        position: 'insideRight',
+                        fill: ORDER_QTY_COLOR,
+                        fontSize: 10,
+                        offset: 5
+                      }}
+                    />
+                    
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: '#ffffff', 
@@ -259,33 +299,93 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                       labelStyle={{ color: '#334155', fontWeight: 600 }}
                       formatter={(value, name) => {
                         const numValue = typeof value === 'number' ? value : 0;
-                        if (name === '평균원가USD') return [`$${numValue.toFixed(2)}`, '평균원가 (USD)'];
+                        if (name === '발주수량') return [`${numValue.toLocaleString()}`, '발주수량'];
                         return [`$${numValue.toFixed(2)}`, name as string];
                       }}
                     />
                     <Legend 
-                      formatter={(value) => <span style={{ color: '#475569', fontSize: 11 }}>{value}</span>}
+                      formatter={(value, entry) => {
+                        const name = String(value);
+                        const shouldShow = 
+                          (name === '원부자재' && selectedCosts.has('원부자재')) ||
+                          (name === '아트웍' && selectedCosts.has('아트웍')) ||
+                          (name === '공임' && selectedCosts.has('공임')) ||
+                          (name === '기타경비' && selectedCosts.has('기타경비')) ||
+                          (name === '발주수량' && showOrderQty);
+                        return shouldShow ? (
+                          <span style={{ color: '#475569', fontSize: 10 }}>{value}</span>
+                        ) : null;
+                      }}
                     />
-                    {selectedCosts.has('원부자재') && (
-                      <Bar dataKey="원부자재" stackId="a" fill={COST_COLORS.원부자재} />
-                    )}
-                    {selectedCosts.has('아트웍') && (
-                      <Bar dataKey="아트웍" stackId="a" fill={COST_COLORS.아트웍} />
+                    
+                    {/* Stacked Area: 단가구성 */}
+                    {selectedCosts.has('기타경비') && (
+                      <Area
+                        yAxisId="usd"
+                        type="monotone"
+                        dataKey="기타경비"
+                        stackId="1"
+                        stroke={COST_COLORS.기타경비}
+                        fill={COST_COLORS.기타경비}
+                        fillOpacity={0.6}
+                      />
                     )}
                     {selectedCosts.has('공임') && (
-                      <Bar dataKey="공임" stackId="a" fill={COST_COLORS.공임} />
+                      <Area
+                        yAxisId="usd"
+                        type="monotone"
+                        dataKey="공임"
+                        stackId="1"
+                        stroke={COST_COLORS.공임}
+                        fill={COST_COLORS.공임}
+                        fillOpacity={0.6}
+                      />
                     )}
-                    {selectedCosts.has('기타경비') && (
-                      <Bar dataKey="기타경비" stackId="a" fill={COST_COLORS.기타경비}>
+                    {selectedCosts.has('아트웍') && (
+                      <Area
+                        yAxisId="usd"
+                        type="monotone"
+                        dataKey="아트웍"
+                        stackId="1"
+                        stroke={COST_COLORS.아트웍}
+                        fill={COST_COLORS.아트웍}
+                        fillOpacity={0.6}
+                      />
+                    )}
+                    {selectedCosts.has('원부자재') && (
+                      <Area
+                        yAxisId="usd"
+                        type="monotone"
+                        dataKey="원부자재"
+                        stackId="1"
+                        stroke={COST_COLORS.원부자재}
+                        fill={COST_COLORS.원부자재}
+                        fillOpacity={0.6}
+                      >
                         <LabelList 
                           dataKey="평균원가USD" 
                           position="top" 
                           formatter={(value) => `$${Number(value).toFixed(2)}`}
-                          style={{ fill: '#334155', fontSize: 11, fontWeight: 600 }}
+                          style={{ fill: '#334155', fontSize: 10, fontWeight: 600 }}
+                          offset={20}
                         />
-                      </Bar>
+                      </Area>
                     )}
-                  </BarChart>
+                    
+                    {/* Line: 발주수량 */}
+                    {showOrderQty && (
+                      <Line
+                        yAxisId="qty"
+                        type="monotone"
+                        dataKey="발주수량"
+                        stroke={ORDER_QTY_COLOR}
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={{ fill: ORDER_QTY_COLOR, strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    )}
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
 
@@ -308,19 +408,20 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                       height={50}
                     />
                     
-                    {/* 왼쪽 Y축: 금액 (KRW) */}
+                    {/* 왼쪽 Y축: 원가/TAG (KRW) */}
                     <YAxis 
                       yAxisId="krw"
-                      tick={{ fill: '#64748b', fontSize: 10 }} 
+                      stroke="#3b82f6"
+                      tick={{ fill: '#3b82f6', fontSize: 10 }} 
                       axisLine={{ stroke: '#cbd5e1' }}
                       tickFormatter={(value) => `₩${(value/1000).toFixed(0)}K`}
-                      domain={['dataMin - 5000', 'dataMax + 5000']}
                       label={{ 
-                        value: '금액 (KRW)', 
+                        value: '원가/TAG (KRW)', 
                         angle: -90, 
                         position: 'insideLeft',
-                        fill: '#64748b',
-                        fontSize: 10
+                        fill: '#3b82f6',
+                        fontSize: 10,
+                        offset: 5
                       }}
                     />
                     
@@ -328,6 +429,7 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                     <YAxis 
                       yAxisId="rate"
                       orientation="right"
+                      stroke={COST_RATE_COLOR}
                       tick={{ fill: COST_RATE_COLOR, fontSize: 10 }} 
                       axisLine={{ stroke: COST_RATE_COLOR }}
                       tickFormatter={(value) => `${value}%`}
@@ -337,7 +439,8 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                         angle: 90, 
                         position: 'insideRight',
                         fill: COST_RATE_COLOR,
-                        fontSize: 10
+                        fontSize: 10,
+                        offset: 5
                       }}
                     />
                     
@@ -346,12 +449,13 @@ export function CompareSection({ items, onRemoveItem, onClear }: CompareSectionP
                       yAxisId="rate"
                       y={TARGET_COST_RATE} 
                       stroke="#10b981" 
+                      strokeDasharray="8 4"
                       strokeWidth={2}
                       label={{ 
-                        value: `적정 ${TARGET_COST_RATE}%`, 
+                        value: `적정 ${TARGET_COST_RATE}%(MU 4.5)`, 
                         position: 'right',
                         fill: '#10b981',
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: 600
                       }}
                     />
