@@ -344,16 +344,18 @@ export function TrendChart({ data }: TrendChartProps) {
                   }}
                 />
                 <Legend 
-                  payload={[
-                    ...(selectedBreakdowns.has('원부자재') ? [{ value: '원부자재', type: 'square' as const, color: BREAKDOWN_COLORS.원부자재 }] : []),
-                    ...(selectedBreakdowns.has('아트웍') ? [{ value: '아트웍', type: 'square' as const, color: BREAKDOWN_COLORS.아트웍 }] : []),
-                    ...(selectedBreakdowns.has('공임') ? [{ value: '공임', type: 'square' as const, color: BREAKDOWN_COLORS.공임 }] : []),
-                    ...(selectedBreakdowns.has('기타경비') ? [{ value: '기타경비', type: 'square' as const, color: BREAKDOWN_COLORS.기타경비 }] : []),
-                    ...(showOrderQty ? [{ value: '발주수량', type: 'line' as const, color: ORDER_QTY_COLOR }] : []),
-                  ]}
-                  formatter={(value) => (
-                    <span style={{ color: '#475569', fontSize: 10 }}>{value}</span>
-                  )}
+                  formatter={(value, entry) => {
+                    const name = String(value);
+                    const shouldShow = 
+                      (name === '원부자재' && selectedBreakdowns.has('원부자재')) ||
+                      (name === '아트웍' && selectedBreakdowns.has('아트웍')) ||
+                      (name === '공임' && selectedBreakdowns.has('공임')) ||
+                      (name === '기타경비' && selectedBreakdowns.has('기타경비')) ||
+                      (name === '발주수량' && showOrderQty);
+                    return shouldShow ? (
+                      <span style={{ color: '#475569', fontSize: 10 }}>{value}</span>
+                    ) : null;
+                  }}
                 />
                 
                 {/* Stacked Area: 단가구성 */}
